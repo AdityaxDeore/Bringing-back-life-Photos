@@ -15,6 +15,8 @@ import torchvision.transforms as transforms
 import numpy as np
 import cv2
 
+# - This function resizes images to make sure their dimensions are multiples of 4.
+# - Deep learning models often require dimensions to be perfectly divisible by certain numbers to process them through multiple layers without errors.
 def data_transforms(img, method=Image.BILINEAR, scale=False):
 
     ow, oh = img.size
@@ -36,6 +38,8 @@ def data_transforms(img, method=Image.BILINEAR, scale=False):
     return img.resize((w, h), method)
 
 
+# - This is a simple resizing function specifically used for older RGB photos.
+# - It ensures the image is at least 256x256 pixels and crops out a perfect square from the center.
 def data_transforms_rgb_old(img):
     w, h = img.size
     A = img
@@ -44,6 +48,8 @@ def data_transforms_rgb_old(img):
     return transforms.CenterCrop(256)(A)
 
 
+# - This function combines an image with a defect mask (like scratches).
+# - It visually fills the scratched areas with white pixels (value 255) so the model knows exactly what parts are damaged.
 def irregular_hole_synthesize(img, mask):
 
     img_np = np.array(img).astype("uint8")
@@ -56,6 +62,8 @@ def irregular_hole_synthesize(img, mask):
     return hole_img
 
 
+# - This function sets up all the specific configuration rules (hyperparameters) for the AI model.
+# - It decides which pre-trained weights to load depending on whether we are just improving quality or also fixing scratches.
 def parameter_set(opt):
     ## Default parameters
     opt.serial_batches = True  # no shuffle
@@ -94,6 +102,8 @@ def parameter_set(opt):
 
 if __name__ == "__main__":
 
+    # - This block initializes the command-line options and applies our specific parameters.
+    # - It creates the Pix2Pix AI mapping model and prepares it for evaluation (testing mode).
     opt = TestOptions().parse(save=False)
     parameter_set(opt)
 
@@ -102,6 +112,7 @@ if __name__ == "__main__":
     model.initialize(opt)
     model.eval()
 
+    # - We create the folders where the original, processed, and final restored images will be saved.
     if not os.path.exists(opt.outputs_dir + "/" + "input_image"):
         os.makedirs(opt.outputs_dir + "/" + "input_image")
     if not os.path.exists(opt.outputs_dir + "/" + "restored_image"):
@@ -125,6 +136,7 @@ if __name__ == "__main__":
     )
     mask_transform = transforms.ToTensor()
 
+    # - This loop goes through every single image in the input folder one by one to restore them automatically.
     for i in range(dataset_size):
 
         input_name = input_loader[i]
@@ -136,6 +148,8 @@ if __name__ == "__main__":
 
         print("Now you are processing %s" % (input_name))
 
+        # - If we are using a scratch mask, this part prepares the image and mask together.
+        # - It can optionally dilate (thicken) the scratch mask slightly using OpenCV to make sure the AI completely covers the edges of the scratches.
         if opt.NL_use_mask:
             mask_name = mask_loader[i]
             mask = Image.open(os.path.join(opt.test_mask, mask_name)).convert("RGB")
@@ -164,6 +178,8 @@ if __name__ == "__main__":
             mask = torch.zeros_like(input)
         ### Necessary input
 
+        # - This is the core step where the AI actually processes the photo.
+        # - We use 'torch.no_grad()' because we are using the model, not training it. It generates the restored image based on the input and mask.
         try:
             with torch.no_grad():
                 generated = model.inference(input, mask)

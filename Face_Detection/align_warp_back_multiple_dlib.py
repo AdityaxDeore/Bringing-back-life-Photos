@@ -23,6 +23,9 @@ import argparse
 import dlib
 
 
+# - These functions (calculate_cdf, calculate_lookup, match_histograms) work together to match the colors of two images.
+# - The newly enhanced face might have slightly different lighting or skin tone than the original old photo.
+# - We calculate the color 'histogram' of both faces and adjust the new face so its colors perfectly match the old one before pasting it back.
 def calculate_cdf(histogram):
     """
     This method calculates the cumulative distribution function
@@ -145,6 +148,8 @@ def compute_transformation_matrix(img, landmark, normalize, target_face_scale=1.
     return affine
 
 
+# - This calculates the exact opposite of the alignment math we did earlier in the detection stage.
+# - We need to take the perfectly straight, enhanced face and warp it back to its original tilted angle and size so it fits perfectly on the person's neck.
 def compute_inverse_transformation_matrix(img, landmark, normalize, target_face_scale=1.0):
 
     std_pts = _standard_face_pts()  # [-1,1]
@@ -214,6 +219,8 @@ def blur_blending(im1, im2, mask):
     return np.array(im) / 255.0
 
 
+# - This function seamlessly stitches the newly enhanced face onto the original background.
+# - It creates a soft, blurry edge (feathering) around the face mask so you don't see a harsh line where the new face was pasted.
 def blur_blending_cv2(im1, im2, mask):
 
     mask = (mask * 255.0).astype(np.uint8)
@@ -346,6 +353,7 @@ def search(face_landmarks):
 
 if __name__ == "__main__":
 
+    # - This reads the command line arguments to find where the original photos and the new restored faces are kept.
     parser = argparse.ArgumentParser()
     parser.add_argument("--origin_url", type=str, default="./", help="origin images")
     parser.add_argument("--replace_url", type=str, default="./", help="restored faces")
@@ -379,6 +387,9 @@ if __name__ == "__main__":
             print("Warning: There is no face in %s" % (x))
             continue
 
+        # - For each original photo, we find all the faces again.
+        # - We match them up with their enhanced versions from the 'Face_Enhancement' stage.
+        # - We apply the color matching, reverse the rotation (inverse warp), and smoothly blend the sharp face back onto the original photo.
         blended = image
         for face_id in range(len(faces)):
 

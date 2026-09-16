@@ -1,6 +1,12 @@
 # Copyright (c) Developers.
 # Licensed under the MIT License.
 
+# We import necessary libraries here to use their functions.
+# - argparse: Helps read command-line inputs (like which folder to check).
+# - os, json, time, gc: Helps interact with the computer's system and memory.
+# - torch, torchvision: These are Deep Learning libraries used to run our AI model (UNet) for scratch detection.
+# - PIL (Pillow): A library used to open and edit images.
+# - numpy: Used for math operations on numbers and images.
 import argparse
 import gc
 import json
@@ -22,6 +28,9 @@ warnings.filterwarnings("ignore", category=UserWarning)
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
+# - This function changes the size of the input image.
+# - AI models like UNet need the image width and height to be multiples of 16 so they don't break during processing.
+# - We calculate the closest multiple of 16 for both height and width, and resize the image using the PIL resize function.
 def data_transforms(img, full_size, method=Image.BICUBIC):
     if full_size == "full_size":
         ow, oh = img.size
@@ -48,6 +57,9 @@ def data_transforms(img, full_size, method=Image.BICUBIC):
         return img.resize((w, h), method)
 
 
+# - This resizes our image when it's converted to a "tensor" (the format the AI model understands).
+# - We scale the image to a standard smaller size (like 256 pixels) to process it faster while keeping the aspect ratio.
+# - We check if width or height is smaller, scale it proportionally, round it to a multiple of 16, and use PyTorch's 'interpolate' to resize.
 def scale_tensor(img_tensor, default_scale=256):
     _, _, w, h = img_tensor.shape
     if w < h:
@@ -63,6 +75,8 @@ def scale_tensor(img_tensor, default_scale=256):
     return F.interpolate(img_tensor, [ow, oh], mode="bilinear")
 
 
+# - A helper function to mix an image and its scratch mask.
+# - This helps visualize where the scratches are by making the scratched parts white (255) on the original image.
 def blend_mask(img, mask):
 
     np_img = np.array(img).astype("float")
@@ -70,6 +84,9 @@ def blend_mask(img, mask):
     return Image.fromarray((np_img * (1 - mask) + mask * 255.0).astype("uint8")).convert("RGB")
 
 
+# - This is the main function that sets up our AI and starts detecting scratches.
+# - It acts as a central place to create our UNet model, load its saved brain (weights), and run it on all images.
+# - We create a UNet model with specific layers, load 'FT_Epoch_latest.pt' (our trained model), and push it to the GPU (graphics card) if available to run faster.
 def main(config):
     print("initializing the dataloader")
 
@@ -99,6 +116,9 @@ def main(config):
         model.cpu()
     model.eval()
 
+    # - This section finds all the photos and sets up folders for saving.
+    # - We need to process all photos one by one automatically and save the scratch masks in a new folder.
+    # - We use 'os.listdir' to get a list of files in the test path and 'mkdir_if_not' to create output folders.
     ## dataloader and transformation
     print("directory of testing image: " + config.test_path)
     imagelist = os.listdir(config.test_path)
@@ -132,6 +152,9 @@ def main(config):
         scratch_image = Image.open(scratch_file).convert("RGB")
         w, h = scratch_image.size
 
+        # - We prepare the photo for the AI model.
+        # - The AI only understands numbers between -1 and 1 (Normalized Tensors), and it works best on Grayscale ("L" mode) for finding scratches because color is distracting.
+        # - We convert the image to Grayscale, turn it into a Tensor, normalize its colors, and resize it.
         transformed_image_PIL = data_transforms(scratch_image, config.input_size)
         scratch_image = transformed_image_PIL.convert("L")
         scratch_image = tv.transforms.ToTensor()(scratch_image)
@@ -144,12 +167,17 @@ def main(config):
             scratch_image_scale = scratch_image_scale.to(config.GPU)
         else:
             scratch_image_scale = scratch_image_scale.cpu()
+        # - This is where the AI actually looks at the photo and predicts scratches to get a probability map.
+        # - We use 'torch.no_grad()' because we are just testing, not training. We pass the image into the model, and use 'sigmoid' to turn the output into percentages (0 to 1).
         with torch.no_grad():
             P = torch.sigmoid(model(scratch_image_scale))
 
         P = P.data.cpu()
         P = F.interpolate(P, [ow, oh], mode="nearest")
 
+        # - Saving the detected scratches (mask) as a new image file so the next stage can use this mask to know exactly where to fix the photo.
+        # - We resize the prediction back to the original image size, set a cutoff (>= 0.4 probability means it's definitely a scratch), and save it as a '.png' picture. 
+        # - We also clear the computer's memory using 'gc.collect()' so it doesn't crash.
         tv.utils.save_image(
             (P >= 0.4).float(),
             os.path.join(

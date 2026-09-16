@@ -7,6 +7,9 @@ import shutil
 from subprocess import call
 import tempfile
 
+# - This function runs the entire 4-stage restoration process programmatically from the GUI.
+# - It is very similar to 'run.py', but designed to run quietly in the background when the user clicks 'Restore'.
+# - It uses subprocess commands to execute the AI models for each stage.
 def modify(input_folder, output_folder):
     def run_cmd(command):
         try:
@@ -102,6 +105,8 @@ def modify(input_folder, output_folder):
     print("All the processing is done. Please check the results.")
 
 
+# - This resizes large photos so they can fit nicely inside the GUI window without stretching.
+# - We check the image dimensions and scale them down proportionally using OpenCV if they exceed the max size.
 def resize_image_for_gui(image, max_size=(400, 400)):
     h, w = image.shape[:2]
     scale = min(max_size[0]/w, max_size[1]/h)
@@ -110,6 +115,8 @@ def resize_image_for_gui(image, max_size=(400, 400)):
         image = cv2.resize(image, (new_w, new_h))
     return image
 
+# - This block designs the visual layout of our desktop application using PySimpleGUI.
+# - It creates buttons, text labels, and two image placeholders (one for the original, one for the restored photo).
 sg.theme('LightGrey1')
 
 images_col = [
@@ -126,6 +133,9 @@ window = sg.Window('Photo Restoration GUI', layout, grab_anywhere=True)
 
 filename = None
 
+# - This is the main event loop that keeps the GUI window open and listens for user clicks.
+# - If the user selects a file, it updates the preview image on the left.
+# - If the user clicks 'Restore Photo', it disables the button, runs the AI pipeline on a copy of the image, and shows the result on the right.
 while True:
     event, values = window.read()
     if event in (None, 'Exit'):

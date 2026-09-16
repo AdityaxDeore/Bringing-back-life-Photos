@@ -24,6 +24,8 @@ import argparse
 import dlib
 
 
+# - This defines the standard coordinates for a perfectly aligned face (eyes, nose, mouth).
+# - It acts as a reference template so we can align all detected faces to match this exact shape before enhancing them.
 def _standard_face_pts():
     pts = (
         np.array([196.0, 226.0, 316.0, 226.0, 256.0, 286.0, 220.0, 360.4, 292.0, 360.4], np.float32) / 256.0
@@ -39,6 +41,7 @@ def _origin_face_pts():
     return np.reshape(pts, (5, 2))
 
 
+# - A simple helper function to extract the X and Y coordinates of a specific facial landmark (like the tip of the nose) from the dlib detection object.
 def get_landmark(face_landmarks, id):
     part = face_landmarks.part(id)
     x = part.x
@@ -47,6 +50,8 @@ def get_landmark(face_landmarks, id):
     return (x, y)
 
 
+# - This function extracts the 5 most important facial points: left eye, right eye, nose, left mouth corner, and right mouth corner.
+# - It uses specific IDs from dlib's 68-point facial landmark model to find these points and averages them to find the exact center of the eyes.
 def search(face_landmarks):
 
     x1, y1 = get_landmark(face_landmarks, 36)
@@ -77,6 +82,8 @@ def search(face_landmarks):
     return results
 
 
+# - This calculates how much to move, rotate, and scale the detected face so it perfectly matches our standard template.
+# - We use 'SimilarityTransform' to estimate this math, ensuring the face is perfectly centered and upright for the AI to enhance it.
 def compute_transformation_matrix(img, landmark, normalize, target_face_scale=1.0):
 
     std_pts = _standard_face_pts()  # [-1,1]
@@ -144,12 +151,15 @@ if __name__ == "__main__":
     os.makedirs(url, exist_ok=True)
     os.makedirs(save_url, exist_ok=True)
 
+    # - We initialize the dlib face detector to find boxes around faces, and the shape predictor to find the 68 specific facial points inside those boxes.
     face_detector = dlib.get_frontal_face_detector()
     landmark_locator = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
 
     count = 0
 
     map_id = {}
+    # - This loop processes every image in the folder.
+    # - It asks the 'face_detector' to find all faces in the image. If none are found, it skips the image.
     for x in os.listdir(url):
         img_url = os.path.join(url, x)
         pil_img = Image.open(img_url).convert("RGB")
@@ -166,6 +176,8 @@ if __name__ == "__main__":
 
         print(len(faces))
 
+        # - For every face found in the image, we extract its landmarks, calculate the alignment math, and warp (crop and rotate) the face into a perfect 256x256 square.
+        # - We then save this perfectly aligned face as a new image file so the enhancement stage can process it.
         if len(faces) > 0:
             for face_id in range(len(faces)):
                 current_face = faces[face_id]

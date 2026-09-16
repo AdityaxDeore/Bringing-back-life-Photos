@@ -16,6 +16,9 @@ def run_cmd(command):
 
 if __name__ == "__main__":
 
+    # - This reads the command line arguments the user provides when running the script.
+    # - We need to know things like which folder has the input images, where to save the results, and whether to use the GPU.
+    # - We use 'argparse' to define these options so the user can easily pass them in the terminal.
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_folder", type=str, default="./test_images/old", help="Test images")
     parser.add_argument(
@@ -34,6 +37,9 @@ if __name__ == "__main__":
 
     gpu1 = opts.GPU
 
+    # - We get the absolute (full) paths for our input and output folders.
+    # - This makes sure our script always knows exactly where the files are, even when it changes folders later.
+    # - We use 'os.path.abspath' to convert relative paths to full paths, and create the output folder if it doesn't exist.
     # resolve relative paths before changing directory
     opts.input_folder = os.path.abspath(opts.input_folder)
     opts.output_folder = os.path.abspath(opts.output_folder)
@@ -42,6 +48,9 @@ if __name__ == "__main__":
 
     main_environment = os.getcwd()
 
+    # - This starts Stage 1, which restores the overall quality of the image and removes scratches if asked.
+    # - This is the first step to clean up the general background and fading before we focus on detailed faces.
+    # - We change into the 'Global' folder and run a subprocess command to call 'test.py', passing the input folder and GPU settings.
     ## Stage 1: Overall Quality Improve
     print("Running Stage 1: Overall restoration")
     os.chdir("./Global")
@@ -61,6 +70,9 @@ if __name__ == "__main__":
         )
         run_cmd(stage_1_command)
     else:
+        # - This handles the special case when the user wants to remove physical scratches.
+        # - It runs an extra detection script first to find the scratches and create a mask for them.
+        # - It calls 'detection.py' to generate a mask, and then runs 'test.py' using that mask to fill in the scratches.
 
         mask_dir = os.path.join(stage_1_output_dir, "masks")
         new_input = os.path.join(mask_dir, "input")
@@ -94,6 +106,9 @@ if __name__ == "__main__":
         run_cmd(stage_1_command_1)
         run_cmd(stage_1_command_2)
 
+    # - This copies the Stage 1 output into the final folder as a backup.
+    # - Just in case the photo doesn't contain any faces, we still want the restored image to be saved in the final output folder.
+    # - We use 'shutil.copy' to copy the files from the Stage 1 output directly to the final output directory.
     ## Solve the case when there is no face in the old photo
     stage_1_results = os.path.join(stage_1_output_dir, "restored_image")
     stage_4_output_dir = os.path.join(opts.output_folder, "final_output")
@@ -106,6 +121,9 @@ if __name__ == "__main__":
     print("Finish Stage 1 ...")
     print("\n")
 
+    # - This starts Stage 2, which finds faces in the photo and crops them out.
+    # - We need to focus on faces separately because human eyes are very sensitive to facial details, and general restoration might blur them.
+    # - We change into the 'Face_Detection' folder and run 'detect_all_dlib.py' which uses an AI landmark detector to find and crop the faces.
     ## Stage 2: Face Detection
 
     print("Running Stage 2: Face Detection")
@@ -126,6 +144,9 @@ if __name__ == "__main__":
     print("Finish Stage 2 ...")
     print("\n")
 
+    # - This starts Stage 3, which enhances and sharpens the cropped faces.
+    # - Old photos often have blurry or degraded faces that need high-definition enhancement to look realistic.
+    # - We change into 'Face_Enhancement', and run 'test_face.py' which uses a generative AI to recreate sharp eyes, lips, and skin texture.
     ## Stage 3: Face Restore
     print("Running Stage 3: Face Enhancement")
     os.chdir(".././Face_Enhancement")
@@ -168,6 +189,9 @@ if __name__ == "__main__":
     print("Finish Stage 3 ...")
     print("\n")
 
+    # - This starts Stage 4, which places the enhanced faces back into the restored photo.
+    # - We can't just leave the faces cropped out; they need to be seamlessly blended back into the main picture.
+    # - We go back to 'Face_Detection' and run 'align_warp_back_multiple_dlib.py' to warp the faces back to their original angle and blend the edges.
     ## Stage 4: Warp back
     print("Running Stage 4: Blending")
     os.chdir(".././Face_Detection")
