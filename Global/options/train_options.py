@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Developers.
 # Licensed under the MIT License.
 
 from .base_options import BaseOptions

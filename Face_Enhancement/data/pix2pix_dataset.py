@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Developers.
 # Licensed under the MIT License.
 
 from data.base_dataset import BaseDataset, get_params, get_transform

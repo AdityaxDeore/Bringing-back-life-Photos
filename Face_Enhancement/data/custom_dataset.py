@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Developers.
 # Licensed under the MIT License.
 
 from data.pix2pix_dataset import Pix2pixDataset
