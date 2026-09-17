@@ -405,7 +405,7 @@ Key Functions & Components:
       required to align the detected face to the canonical template, saving the aligned crop to disk.
 
 ----------------------------------------------------------------------------------------------------
-5.6 Face_Enhancement/test_face.py (Generative Face Detail Super-Resolution)
+5.5 Face_Enhancement/test_face.py (Generative Face Detail Super-Resolution)
 ----------------------------------------------------------------------------------------------------
 Location: `Bringing-Old-Photos-Back-to-Life/Face_Enhancement/test_face.py`
 Purpose : Restores high-frequency facial details on the aligned face crops.
